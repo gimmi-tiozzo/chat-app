@@ -11,6 +11,7 @@ const io = socketio(server);
 const publicPath = path.join(__dirname, "../public");
 app.use(express.static(publicPath));
 
+//accetta connessione websocket dai client
 io.on("connection", (socket) => {
     console.log("Nuova connessione tramite websocket");
     socket.emit("message", "Welcome!"); //solo me
