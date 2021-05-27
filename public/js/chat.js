@@ -1,16 +1,37 @@
 const socket = io();
 
+//html elementi
 const $messageForm = document.querySelector("#message-form");
 const $sendMessageButton = document.querySelector("#send-message");
 const $messageText = document.querySelector("#message-text");
 const $sendLocationButton = document.querySelector("#send-location");
 const $messages = document.querySelector("#messages");
+
+//template
 const $messageTemplate = document.querySelector("#message-template");
+const $locationTemplate = document.querySelector("#location-template");
+
+//options
+const { username, room } = Qs.parse(location.search, { ignoreQueryPrefix: true });
+
+//invia al server i dati di collegamento dell'utente in chat
+socket.emit("join", { username, room });
 
 //ricezione messaggi dal server
 socket.on("message", (message) => {
     const html = Mustache.render($messageTemplate.innerHTML, {
-        message,
+        message: message.text,
+        time: moment(message.createdAt).format("HH:mm"),
+    });
+
+    $messages.insertAdjacentHTML("beforeend", html);
+});
+
+//ricezione messaggi relativi alla geo-localizzazione
+socket.on("locationMessage", (message) => {
+    const html = Mustache.render($locationTemplate.innerHTML, {
+        url: message.url,
+        time: moment(message.createdAt).format("HH:mm"),
     });
 
     $messages.insertAdjacentHTML("beforeend", html);
