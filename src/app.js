@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 const socketio = require("socket.io");
 const path = require("path");
+const Filter = require("bad-words");
 
 const app = express();
 const server = http.createServer(app);
@@ -15,12 +16,20 @@ io.on("connection", (socket) => {
     socket.emit("message", "Welcome!"); //solo me
     socket.broadcast.emit("message", "Un nuovo utente si è unito"); //tutti tranne me
 
-    socket.on("sendMessage", (msg) => {
+    socket.on("sendMessage", (msg, callback) => {
+        const filter = new Filter();
+
+        if (filter.isProfane(msg)) {
+            callback("Rilevata oscenità nel testo!!!");
+        }
+
         io.emit("message", msg); //tutti compreso me
+        callback();
     });
 
-    socket.on("sendLocation", ({ lat, long } = {}) => {
-        io.emit("message", `Location: latitude=${lat}, longitude=${long}`);
+    socket.on("sendLocation", ({ lat, long } = {}, callback) => {
+        io.emit("message", `https://google.com/maps?q=${lat},${long}`);
+        callback("Posizione condivisa!");
     });
 
     socket.on("disconnect", () => {

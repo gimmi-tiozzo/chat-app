@@ -9,7 +9,13 @@ socket.on("message", (msg) => {
 
 form.addEventListener("submit", (e) => {
     e.preventDefault();
-    socket.emit("sendMessage", txt.value);
+    socket.emit("sendMessage", txt.value, (error) => {
+        if (error) {
+            return console.log(error);
+        }
+
+        console.log("Messaggio consegnato al server!");
+    });
 });
 
 btnLocation.addEventListener("click", (e) => {
@@ -24,7 +30,9 @@ btnLocation.addEventListener("click", (e) => {
                 long: position.coords.longitude,
             };
 
-            socket.emit("sendLocation", coords);
+            socket.emit("sendLocation", coords, (data) => {
+                console.log("Messaggio consegnato al server: " + data);
+            });
         },
         (error) => {
             console.log(error);
