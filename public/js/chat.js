@@ -6,20 +6,38 @@ const $sendMessageButton = document.querySelector("#send-message");
 const $messageText = document.querySelector("#message-text");
 const $sendLocationButton = document.querySelector("#send-location");
 const $messages = document.querySelector("#messages");
+const $sidebar = document.querySelector("#sidebar");
 
 //template
 const $messageTemplate = document.querySelector("#message-template");
 const $locationTemplate = document.querySelector("#location-template");
+const $sidebarTemplate = document.querySelector("#sidebar-template");
 
 //options
 const { username, room } = Qs.parse(location.search, { ignoreQueryPrefix: true });
 
 //invia al server i dati di collegamento dell'utente in chat
-socket.emit("join", { username, room });
+socket.emit("join", { username, room }, (error) => {
+    if (error) {
+        alert(error);
+        location.href = "/";
+    }
+});
+
+//ricezione lista utenti in room
+socket.on("roomData", ({ room, users } = {}) => {
+    const html = Mustache.render($sidebarTemplate.innerHTML, {
+        room,
+        users,
+    });
+
+    $sidebar.innerHTML = html;
+});
 
 //ricezione messaggi dal server
 socket.on("message", (message) => {
     const html = Mustache.render($messageTemplate.innerHTML, {
+        username: message.username,
         message: message.text,
         time: moment(message.createdAt).format("HH:mm"),
     });
@@ -30,6 +48,7 @@ socket.on("message", (message) => {
 //ricezione messaggi relativi alla geo-localizzazione
 socket.on("locationMessage", (message) => {
     const html = Mustache.render($locationTemplate.innerHTML, {
+        username: message.username,
         url: message.url,
         time: moment(message.createdAt).format("HH:mm"),
     });

@@ -4,6 +4,7 @@ const socketio = require("socket.io");
 const path = require("path");
 const Filter = require("bad-words");
 const { generateMessage, generateLocationMessage } = require("./utils/messages");
+const { addUser, getUser, getUserInRoom, removeUser } = require("./utils/users");
 
 const app = express();
 const server = http.createServer(app);
@@ -17,13 +18,25 @@ io.on("connection", (socket) => {
     console.log("Nuova connessione tramite websocket");
 
     //evento collegamento utente
-    socket.on("join", ({ username, room }) => {
-        socket.join(room);
+    socket.on("join", ({ username, room } = {}, callback) => {
+        const { error, user } = addUser({ id: socket.id, username, room });
+
+        if (error) {
+            callback(error);
+        }
+
+        socket.join(user.room);
         //socket.emit, io.emit, socket.broadcast.emit
         //io.to.emit, socket.broadcast.to.emit
 
-        socket.emit("message", generateMessage("Welcome!")); //solo me
-        socket.broadcast.to(room).emit("message", generateMessage(`${username} si è unito!`)); //tutti tranne me
+        socket.emit("message", generateMessage("Admin", "Welcome!")); //solo me
+        socket.broadcast.to(user.room).emit("message", generateMessage("Admin", `${user.username} si è unito!`)); //tutti tranne me
+        io.to(user.room).emit("roomData", {
+            room: user.room,
+            users: getUserInRoom(user.room),
+        });
+
+        callback();
     });
 
     //evento ricezione messaggio
@@ -35,20 +48,30 @@ io.on("connection", (socket) => {
             callback("Rilevata oscenità nel testo!!!");
         }
 
-        io.emit("message", generateMessage(msg)); //tutti compreso me
+        const user = getUser(socket.id);
+        io.to(user.room).emit("message", generateMessage(user.username, msg)); //tutti compreso me
         callback();
     });
 
     //ricezione messaggio di geo-localizzazione
     socket.on("sendLocation", ({ lat, long } = {}, callback) => {
+        const user = getUser(socket.id);
         //invia a tutti la posizine + ack al chiamante
-        io.emit("locationMessage", generateLocationMessage(`https://google.com/maps?q=${lat},${long}`));
+        io.to(user.room).emit("locationMessage", generateLocationMessage(user.username, `https://google.com/maps?q=${lat},${long}`));
         callback("Posizione condivisa!");
     });
 
     //evento disconessione client
     socket.on("disconnect", () => {
-        io.emit("message", generateMessage("Utente disconesso")); //tutti compreso me (in questo caso me non c'è perchè disconesso)
+        const user = removeUser(socket.id);
+
+        if (user) {
+            io.to(user.room).emit("message", generateMessage("Admin", "Utente disconesso")); //tutti compreso me (in questo caso me non c'è perchè disconesso)
+            io.to(user.room).emit("roomData", {
+                room: user.room,
+                users: getUserInRoom(user.room),
+            });
+        }
     });
 });
 
