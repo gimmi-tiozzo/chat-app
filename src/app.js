@@ -22,7 +22,7 @@ io.on("connection", (socket) => {
         const { error, user } = addUser({ id: socket.id, username, room });
 
         if (error) {
-            callback(error);
+            return callback(error);
         }
 
         socket.join(user.room);
